@@ -81,14 +81,13 @@ namespace PS2RomsVisualizer
 
 		private ListViewEx listView1;
 
-		public MainForm()
+		private void InitializeList()
 		{
-			InitializeComponent();
-			LoadSettings();
-			listView1.HeaderStyle = ColumnHeaderStyle.None;
-			List<Game> list = ParseGames(appSettings.gamesPath);
+			gamesImageList.Images.Clear();
+			listView1.Items.Clear();
+			ParseGames(appSettings.gamesPath);
 			int num = 0;
-			foreach (Game item in list)
+			foreach (Game item in GamesList)
 			{
 				gamesImageList.Images.Add(item.Image);
 				ListViewItem value = new ListViewItem
@@ -102,11 +101,18 @@ namespace PS2RomsVisualizer
 				listView1.Items.Add(value);
 				num++;
 			}
+		}
+		public MainForm()
+		{
+			InitializeComponent();
+			LoadSettings();
+			InitializeList();
+			listView1.HeaderStyle = ColumnHeaderStyle.None;
 			listView1.Columns[1].AutoResize(ColumnHeaderAutoResizeStyle.ColumnContent);
 			listView1.ListViewItemSorter = new ListViewItemComparer(1);
 			int magicNumber = 16; // число которое позволяет иметь отступ справа достаточный, чтобы не было горизонтального скролла
-			int width = base.Width = listView1.Columns[0].Width + listView1.Columns[1].Width + magicNumber;
-			int currentHeight = list.Count * 49 + 39;
+			int width = Width = listView1.Columns[0].Width + listView1.Columns[1].Width + magicNumber;
+			int currentHeight = GamesList.Count * 49 + 39;
 			int maxHeight = 983;
 			if (currentHeight > maxHeight)
 			{
@@ -119,7 +125,10 @@ namespace PS2RomsVisualizer
 		void LoadSetting(Setting setting) {
 			PropertyInfo propInfo = Settings.Default.GetType().GetProperty(setting.Name);
 			string value = (string)propInfo.GetValue(Settings.Default);
-			if (value == null || !Directory.Exists(value))
+			bool needToSet = true;
+			if (setting.DialogType == DialogType.FolderDialog) needToSet = !Directory.Exists(value);
+			if (setting.DialogType == DialogType.FileDialog) needToSet = !File.Exists(value);
+			if (value == null || needToSet)
 			{
 				string selectedPath = "";
 				if (setting.DialogType == DialogType.FolderDialog) selectedPath = GetFolderPath(setting.Msg);
@@ -143,7 +152,7 @@ namespace PS2RomsVisualizer
 			Settings.Default.Save();
 			PropertyInfo localSettingInfo = appSettings.GetType().GetProperty(setting.Name);
 			localSettingInfo.SetValue(appSettings, (string)propInfo.GetValue(Settings.Default));
-			InitializeComponent();
+			InitializeList();
 		}
 
 		public enum DialogType
@@ -229,7 +238,8 @@ namespace PS2RomsVisualizer
 			return fileDialog.FileName;
 		}
 
-		private List<Game> ParseGames(string path)
+		private List<Game> GamesList = new List<Game>();
+		private void ParseGames(string path)
 		{
 			ICollection<FileInfo> list = (
 				from file in new DirectoryInfo(path).GetFiles("*.*")
@@ -251,7 +261,7 @@ namespace PS2RomsVisualizer
 				bitmap.Save(appSettings.bannersPath + game.Name + ".png");
 				bitmap = (game.Image = new Bitmap(appSettings.bannersPath + game.Name + ".png"));
 			}
-			return list2;
+			GamesList = list2;
 		}
 
 		private void StartGame()
